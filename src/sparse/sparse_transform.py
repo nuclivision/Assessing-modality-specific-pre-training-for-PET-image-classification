@@ -15,7 +15,6 @@ import sys
 
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
-from nucli_train.nets.conv_blocks.builder import CONV_BLOCKS_REGISTRY
 
 _cur_active: torch.Tensor = None  # B1ff
 
@@ -210,7 +209,6 @@ class SparseConvNeXtLayerNorm(nn.LayerNorm):
         )
 
 
-@CONV_BLOCKS_REGISTRY.register("SparseResBlock2D")
 class SparseConvNeXtBlock(nn.Module):
     r"""ConvNeXt Block. There are two equivalent implementations:
     (1) DwConv -> LayerNorm (channels_first) -> 1x1 Conv -> GELU -> 1x1 Conv; all in (N, C, H, W)

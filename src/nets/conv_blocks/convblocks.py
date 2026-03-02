@@ -17,10 +17,6 @@ if str(ROOT) not in sys.path:
 
 from timm.models.layers import trunc_normal_, DropPath
 
-from nucli_train.nets.conv_blocks.builder import CONV_BLOCKS_REGISTRY
-
-
-@CONV_BLOCKS_REGISTRY.register("convnextv2-block-2d")
 class ConvNeXtV2Block2D(nn.Module):
     """
     Sparse ConvNeXtV2 block implementation.

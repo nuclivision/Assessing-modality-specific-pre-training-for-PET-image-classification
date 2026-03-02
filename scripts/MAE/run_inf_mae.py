@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import src.models.MAE  
-from nucli_train.models.builders import MODEL_BUILDERS_REGISTRY 
+from src.models.factory import build_local_model
 
 
 def set_random_seed(seed: int) -> None:
@@ -32,20 +32,7 @@ def load_model(model_cfg_path: str, ckpt_path: str) -> torch.nn.Module:
     cfg = yaml.safe_load(open(model_cfg_path))
     model_cfg = cfg["model"] if "model" in cfg else cfg
 
-    if hasattr(MODEL_BUILDERS_REGISTRY, "get"):
-        builder = MODEL_BUILDERS_REGISTRY.get(model_cfg["name"])
-    else:
-        builder = MODEL_BUILDERS_REGISTRY[model_cfg["name"]]
-    if builder is None:
-        raise ValueError(
-            f"Model builder '{model_cfg.get('name')}' not found in MODEL_BUILDERS_REGISTRY."
-        )
-
-    model = builder(model_cfg)
-    if model is None:
-        raise ValueError(
-            f"Builder '{model_cfg.get('name')}' returned None. Check model config format in: {model_cfg_path}"
-        )
+    model = build_local_model(model_cfg)
 
     moved = model.cuda()
     if moved is not None:

@@ -9,9 +9,7 @@ import yaml
 
 sys.path.insert(0, str(Path.cwd().parent))  # point to repo root
 
-from tasks.models.convnext_MAE_clf import (
-    MODEL_BUILDERS_REGISTRY,
-)
+from src.models.factory import build_local_model
 
 from monai.transforms import (
     Compose,
@@ -22,7 +20,7 @@ from monai.transforms import (
     ToTensord,
 )
 from monai.data import Dataset
-import sparse.sparse_transform as sparse_ops
+import src.sparse.sparse_transform as sparse_ops
 
 
 def run_inference(setup_cfg_path, checkpoint_path, test_csv):
@@ -60,11 +58,7 @@ def run_inference(setup_cfg_path, checkpoint_path, test_csv):
 
     # Load model + weights
     model_cfg = setup["model"]
-    if hasattr(MODEL_BUILDERS_REGISTRY, "get"):
-        model_cls = MODEL_BUILDERS_REGISTRY.get(model_cfg["name"])
-    else:
-        model_cls = MODEL_BUILDERS_REGISTRY[model_cfg["name"]]
-    model = model_cls(model_cfg).to(device)
+    model = build_local_model(model_cfg).to(device)
     print("checkpoint path:", checkpoint_path)
     ckpt = torch.load(checkpoint_path, map_location=device)
     print("keys of ckpt:", ckpt.keys())
@@ -112,11 +106,7 @@ def run_mae_inference(setup_cfg_path, checkpoint_path, test_csv):
 
     # Load model + weights
     model_cfg = setup["model"]
-    if hasattr(MODEL_BUILDERS_REGISTRY, "get"):
-        model_cls = MODEL_BUILDERS_REGISTRY.get(model_cfg["name"])
-    else:
-        model_cls = MODEL_BUILDERS_REGISTRY[model_cfg["name"]]
-    model = model_cls(model_cfg).to(device)
+    model = build_local_model(model_cfg).to(device)
     print("checkpoint path:", checkpoint_path)
     ckpt = torch.load(checkpoint_path, map_location=device)
     state = ckpt["model_state"] if "model_state" in ckpt else ckpt

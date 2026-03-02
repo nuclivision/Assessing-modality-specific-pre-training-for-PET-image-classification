@@ -11,23 +11,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from nucli_train.models.builders import (
-    build_model,
-    MODEL_REGISTRY,
-    MODEL_BUILDERS_REGISTRY,
-)
-from nucli_train.nets.builders import (
-    ARCHITECTURE_BUILDERS_REGISTRY,
-    build_network,
-    NETWORK_REGISTRY,
-)
+from nucli_train.models.builders import build_model
 from nucli_train.models.image_translation import ImageTranslationModel
-import sparse.sparse_transform as sparse_ops
+import src.sparse.sparse_transform as sparse_ops
 
 import torch
 import torch.nn as nn
 
 import src.nets.convnext
+from src.nets.convnext import build_network_from_cfg
 
 torch.set_printoptions(threshold=torch.inf)  # no truncation
 torch.set_printoptions(linewidth=200)
@@ -48,24 +40,25 @@ class MIM(ImageTranslationModel):
         super().__init__(net=net, loss_functions=loss_functions, **kwargs)
 
         self.network = net
+        self.base_network = getattr(net, "network", net)
         self.intensitylog = intensitylog
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if patch_size is None:
-            if hasattr(net.network, "patch_size"):
-                patch_size = net.network.patch_size
+            if hasattr(self.base_network, "patch_size"):
+                patch_size = self.base_network.patch_size
             else:
                 raise ValueError(
                     "patch_size must be provided when the network lacks a patch_size attribute."
                 )
         self.prepretrain = prepretrain
         self.patch_size = patch_size
-        if hasattr(net.network, "mask_ratio"):
+        if hasattr(self.base_network, "mask_ratio"):
             print("using the mask ratio from the net")
-            mask_ratio = net.network.mask_ratio
+            mask_ratio = self.base_network.mask_ratio
         print(f"Using a mask ratio of {mask_ratio}")
         self.mask_ratio = mask_ratio
         self.downsample_ratio = 1
-        for layer in self.network.network.downsample_layers:
+        for layer in self.base_network.downsample_layers:
             if isinstance(layer, nn.Sequential):
                 conv = next((m for m in layer if isinstance(m, nn.Conv2d)), None)
             else:
@@ -75,13 +68,20 @@ class MIM(ImageTranslationModel):
             if conv is not None:
                 self.downsample_ratio *= conv.stride[0]
         print("Downsample ratio:", self.downsample_ratio)
-        self.opt = self.network.get_optimizer()
-        if hasattr(net.network, "prepretrained_ckpt"):
-            self.prepretrained_ckpt = net.network.prepretrained_ckpt
+        if hasattr(self.network, "get_optimizer"):
+            self.opt = self.network.get_optimizer()
+        elif hasattr(self.base_network, "get_optimizer"):
+            self.opt = self.base_network.get_optimizer()
+        else:
+            self.opt = torch.optim.Adam(
+                filter(lambda p: p.requires_grad, self.base_network.parameters())
+            )
+        if hasattr(self.base_network, "prepretrained_ckpt"):
+            self.prepretrained_ckpt = self.base_network.prepretrained_ckpt
             if self.prepretrained_ckpt is not None and self.prepretrained_ckpt != "":
                 ckpt = torch.load(self.prepretrained_ckpt, map_location=device)
                 state = ckpt.get("state_dict", ckpt)
-                missing, unexpected = self.network.network.load_state_dict(
+                missing, unexpected = self.base_network.load_state_dict(
                     state, strict=False
                 )
                 print("Loaded phase 1 ckpt:", self.prepretrained_ckpt)
@@ -105,12 +105,12 @@ class MIM(ImageTranslationModel):
 
     def _get_expected_in_chans(self):
         # Prefer network attribute when available.
-        in_chans = getattr(self.network.network, "in_chans", None)
+        in_chans = getattr(self.base_network, "in_chans", None)
         if isinstance(in_chans, int) and in_chans > 0:
             return in_chans
 
         # Fallback: infer from the first Conv2d.
-        for module in self.network.network.modules():
+        for module in self.base_network.modules():
             if isinstance(module, nn.Conv2d):
                 return int(module.in_channels)
         return None
@@ -238,7 +238,7 @@ class MIM(ImageTranslationModel):
             patch_mask.float(), size=(f_h, f_h), mode="nearest"
         ).bool()
         sparse_ops._cur_active = active_b1ff
-        x = self.network.network.downsample_layers[0](
+        x = self.base_network.downsample_layers[0](
             input_data
         )  
         H, W = x.shape[-2], x.shape[-1]
@@ -250,7 +250,7 @@ class MIM(ImageTranslationModel):
         h_dec = input_data.shape[-1] // self.downsample_ratio
         scale_h = h_mask // h_dec
         mask_dec = self.downsample_mask(mask, scale_h)
-        preds, feats = self.network.forward(x, mask_dec) 
+        preds, feats = self.base_network.forward(x, mask_dec) 
         targets = input_data 
         losses = self.forward_loss(targets, preds, patch_mask_long)
         return losses
@@ -279,7 +279,7 @@ class MIM(ImageTranslationModel):
                 patch_mask.float(), size=(f_h, f_h), mode="nearest"
             ).bool()
             sparse_ops._cur_active = active_b1ff
-            x = self.network.network.downsample_layers[0](input_data)
+            x = self.base_network.downsample_layers[0](input_data)
             H, W = x.shape[-2], x.shape[-1]
             scale = H // h 
             mask = self.upsample_mask(patch_mask, h, w, scale, scale)
@@ -291,7 +291,7 @@ class MIM(ImageTranslationModel):
             ) 
             scale_h = h_mask // h_dec
             mask_dec = self.downsample_mask(mask, scale_h)
-            preds, feats = self.network.forward(x, mask_dec)  
+            preds, feats = self.base_network.forward(x, mask_dec)  
             losses = self.forward_loss(input_data, preds, patch_mask_long)
             ##################### EVALUATION  ######################
             B, _, H, W = preds.shape  # e.g., 6, 1024, 6, 6
@@ -328,9 +328,8 @@ class MIM(ImageTranslationModel):
         return counts
 
 
-@MODEL_BUILDERS_REGISTRY.register("MAE")
-def build_MAE(cfg):
-    net = build_network(cfg["args"]["network"])
+def build_mae_model(cfg):
+    net = build_network_from_cfg(cfg["args"]["network"])
     losses = cfg["args"].get("losses", None)
 
     patch_size = cfg["args"]["patch_size"]
@@ -367,3 +366,6 @@ def build_MAE(cfg):
     print("Params by bucket:", params_per_bucket)
 
     return my_MIM
+
+
+build_MAE = build_mae_model

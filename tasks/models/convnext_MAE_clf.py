@@ -12,12 +12,10 @@ if str(repo_root) not in sys.path:
 import src.sparse.sparse_transform as sparse_ops
 
 from src.nets import convnext
-from nucli_train.nets.builders import ARCHITECTURE_BUILDERS_REGISTRY, build_network
-from nucli_train.models.builders import build_model, MODEL_BUILDERS_REGISTRY
+from src.nets.convnext import build_network_from_cfg
 
 repo_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(repo_root / "src"))
-import sparse.sparse_transform as sparse_ops
 import matplotlib.pyplot as plt
 import numpy as np
 from timm.layers import NormMlpClassifierHead
@@ -209,8 +207,7 @@ class ConvNeXtMAEWithAttention(nn.Module):
         return self.classifier(self.pre_cls_drop(weighted_feats))
 
 
-@MODEL_BUILDERS_REGISTRY.register("classifier_MAE")
-def build_MAE_clf(cfg):
+def build_classifier_mae(cfg):
     model_args = cfg.get("model_args", {})
     pretrain_source = model_args.get("pretrain_source", "mae")
     pretrained = model_args.get("pretrained", True)
@@ -223,7 +220,7 @@ def build_MAE_clf(cfg):
 
     net = None
     if pretrain_source.lower() == "mae":
-        net = build_network(cfg["args"]["network"])
+        net = build_network_from_cfg(cfg["args"]["network"])
     else:
         print(
             "Using timm pretrained ConvNeXtV2 backbone:",
@@ -251,3 +248,6 @@ def build_MAE_clf(cfg):
     print(f"Non-encoder parameters: {non_encoder_params:,}")
 
     return my_clf
+
+
+build_MAE_clf = build_classifier_mae

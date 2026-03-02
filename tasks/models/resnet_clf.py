@@ -2,9 +2,6 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
-# from . import register_model
-from nucli_train.models.builders import build_model, MODEL_BUILDERS_REGISTRY
-
 
 class ResNet_MIP_classifier(nn.Module):
 
@@ -83,9 +80,22 @@ class ResNet_MIP_classifier(nn.Module):
     def _count_trainable_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
+    def count_parameters(self, include=None, exclude=None, trainable_only=False):
+        include = tuple(include or [])
+        exclude = tuple(exclude or [])
+        total = 0
+        for name, p in self.named_parameters():
+            if trainable_only and not p.requires_grad:
+                continue
+            if include and not name.startswith(include):
+                continue
+            if exclude and name.startswith(exclude):
+                continue
+            total += p.numel()
+        return total
 
-@MODEL_BUILDERS_REGISTRY.register("resnet_scratch")
-def build_MAE_clf(cfg):
+
+def build_resnet_scratch(cfg):
     model_args = cfg.get("model_args", {})
     num_classes = model_args.get("num_classes", 2)
     pretrained = model_args.get("pretrained", True)
@@ -111,3 +121,6 @@ def build_MAE_clf(cfg):
     print(f"Total model parameters: {total_params:,}")
 
     return my_clf
+
+
+build_MAE_clf = build_resnet_scratch

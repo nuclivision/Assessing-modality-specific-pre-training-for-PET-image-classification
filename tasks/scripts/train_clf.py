@@ -34,8 +34,8 @@ import monai.utils as monai_utils
 import monai.utils.misc as monai_misc
 from monai.transforms.transform import Randomizable
 
-# from src.nets import MODEL_REGISTRY
-from nucli_train.models.builders import build_model as nucli_build_model, MODEL_REGISTRY
+from nucli_train.models.builders import build_model as nucli_build_model
+from src.models.factory import build_local_model
 
 FIXED_MAX = int(np.iinfo(np.uint32).max)  # 4294967295
 
@@ -226,10 +226,10 @@ def load_configs(args):
 
 
 def build_model(model_cfg, device):
-    if "args" in model_cfg or "model_args" in model_cfg:
+    try:
+        model = build_local_model(model_cfg)
+    except ValueError:
         model = nucli_build_model(model_cfg)
-    else:
-        model = MODEL_REGISTRY[model_cfg["name"]](**model_cfg["params"])
     return model.to(device)
 
 

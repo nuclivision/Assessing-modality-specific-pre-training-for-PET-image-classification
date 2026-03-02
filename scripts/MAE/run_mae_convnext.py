@@ -17,6 +17,7 @@ from src.data.MIPdataset import build_mip_data
 from src.val import evaluator_MAE
 import src.models.MAE
 import src.nets.convnext
+from src.models.factory import build_local_model
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -50,7 +51,11 @@ with open(model_cfg, "r") as f:
     model_cfg_dict = yaml.safe_load(f)
 
 print("Build model")
-model = build_model(model_cfg_dict)
+model_cfg_local = model_cfg_dict["model"] if "model" in model_cfg_dict else model_cfg_dict
+try:
+    model = build_local_model(model_cfg_local)
+except ValueError:
+    model = build_model(model_cfg_dict)
 total_params = sum(p.numel() for p in model.parameters())
 print(f"Total model params: {total_params:,}")
 

@@ -18,15 +18,20 @@ import sys
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from sparse.sparse_transform import SparseConvNeXtBlock, SparseConvNeXtLayerNorm, SparseConv2dReweighted
-import src.sparse.sparse_transform as sparse_transform
-from nucli_train.nets.builders import (
-    OPTIMIZERS,
-    NETWORK_REGISTRY,
+from src.sparse.sparse_transform import (
+    SparseConvNeXtBlock,
+    SparseConvNeXtLayerNorm,
+    SparseConv2dReweighted,
 )
 import math
-from nucli_train.nets.conv_blocks import CONV_BLOCKS_REGISTRY
-import src.nets.conv_blocks.convblocks  
+from src.nets.conv_blocks.convblocks import ConvNeXtV2Block2D
+
+OPTIMIZERS = {"adam": torch.optim.Adam}
+
+CONV_BLOCKS = {
+    "convnextv2-block-2d": ConvNeXtV2Block2D,
+    "SparseResBlock2D": SparseConvNeXtBlock,
+}
 
 class SparseConvNeXt_2d(nn.Module):
     r"""ConvNeXt
@@ -142,7 +147,11 @@ class SparseConvNeXt_2d(nn.Module):
         self.opt = None
 
         # decoder
-        decoder_cls = CONV_BLOCKS_REGISTRY.get(decoder_block)
+        decoder_cls = CONV_BLOCKS.get(decoder_block)
+        if decoder_cls is None:
+            raise ValueError(
+                f"Unknown decoder_block '{decoder_block}'. Available: {list(CONV_BLOCKS.keys())}"
+            )
         self.decoder_embed_dim = decoder_embed_dim
         self.decoder_depth = decoder_depth
         self.DecoderBlock = decoder_cls
@@ -258,7 +267,22 @@ class SparseConvNeXt_2d(nn.Module):
 
         return x, feats
 
-@NETWORK_REGISTRY.register("sparseconvnext_2d")
 def sparseconvnext_2d(**args_cfg):
     model = SparseConvNeXt_2d(**args_cfg)
     return model
+
+
+NETWORK_BUILDERS = {
+    "sparseconvnext_2d": sparseconvnext_2d,
+}
+
+
+def build_network_from_cfg(network_cfg):
+    name = network_cfg.get("name")
+    args = network_cfg.get("args", {})
+    builder = NETWORK_BUILDERS.get(name)
+    if builder is None:
+        raise ValueError(
+            f"Unknown network '{name}'. Available: {list(NETWORK_BUILDERS.keys())}"
+        )
+    return builder(**args)

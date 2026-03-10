@@ -80,11 +80,11 @@ class MAEevaluatorIN:
             fig, axs = plt.subplots(1, 3, squeeze=False, figsize=(9, 3))
             fig.suptitle(f"Image {i+1}", y=1.02)
             axs[0, 0].imshow(self.to_img(originals[i]))
-            axs[0, 0].set_title(f"Original")
+            axs[0, 0].set_title("Original")
             axs[0, 1].imshow(self.to_img(masked[i]))
-            axs[0, 1].set_title(f"Masked")
+            axs[0, 1].set_title("Masked")
             axs[0, 2].imshow(self.to_img(recon[i], robust=True))
-            axs[0, 2].set_title(f"Reconstruction")
+            axs[0, 2].set_title("Reconstruction")
             for ax in axs[0]:
                 ax.set_axis_off()
 

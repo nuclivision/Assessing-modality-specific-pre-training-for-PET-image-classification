@@ -4,6 +4,7 @@ import scipy.ndimage as ndi
 from pathlib import Path
 from scipy.ndimage import map_coordinates
 import argparse
+from tqdm import tqdm
 
 
 def crop_pad_2d(img, target_h, target_w):
@@ -27,7 +28,7 @@ def crop_pad_2d(img, target_h, target_w):
         img = np.pad(img, ((0, 0), (left, right)), mode="constant")
     else:
         if W > 600:
-            print("LARGE IMAGE: >630")
+            # print("LARGE IMAGE: >630")
             start = max(0, W - target_w - 150)
             end = start + target_w
             img = img[:, start:end]
@@ -39,18 +40,8 @@ def crop_pad_2d(img, target_h, target_w):
 
 
 def write_nii(array, affine_ras, full_filename_nii):
-    """
-    Convert a 3D array with an affine matrix to a NIfTI file.
-    Applies a flip matrix to convert from LPS (NRRD convention) to RAS (NIfTI convention).
-    """
-
-    # Create the NIfTI image
     nii_img = nib.Nifti1Image(array, affine_ras)
-
-    # Explicitly set the sform and sform code
     nii_img.set_sform(affine_ras, code=1)
-
-    # Save the NIfTI file
     nib.save(nii_img, full_filename_nii)
 
 
@@ -70,7 +61,6 @@ def resample_to_spacing(
     if len(target_mm) != 3:
         raise ValueError("target_mm must be a float or a 3-tuple (tx, ty, tz)")
 
-    print(f"target mm: {target_mm}")
     zoom = [orig / tgt for orig, tgt in zip(voxel_mm, target_mm)]
 
     return ndi.zoom(vol, zoom=zoom, order=order, prefilter=prefilter, **zoom_kw)
@@ -81,51 +71,51 @@ def oblique_sagittal_mip(vol, theta_deg, order=1, cval=0.0):
     Sagittal-style MIP at in-plane angle `theta_deg` without rotating
     the whole volume.  Returns an (X, Z) 2-D array.
     """
-    X, Y, Z = vol.shape
-    cx, cy = (X - 1) / 2.0, (Y - 1) / 2.0
+    if theta_deg == 0:
+        return np.max(vol, axis=1)
+    elif theta_deg == 90:
+        return np.max(vol, axis=0)
+    else:
+        X, Y, Z = vol.shape
+        cx, cy = (X - 1) / 2.0, (Y - 1) / 2.0
 
-    th = np.deg2rad(theta_deg)
-    cth, sth = np.cos(th), np.sin(th)
+        th = np.deg2rad(theta_deg)
+        cth, sth = np.cos(th), np.sin(th)
 
-    # Pre-compute indices that do not depend on column i
-    y_idx = np.arange(Y)[:, None] - cy  # shape (Y,1)
-    z_idx = np.arange(Z)[None, :]  # shape (1,Z), later broadcast
+        # Pre-compute indices that do not depend on column i
+        y_idx = np.arange(Y)[:, None] - cy  # shape (Y,1)
+        z_idx = np.arange(Z)[None, :]  # shape (1,Z), later broadcast
 
-    mip = np.full((X, Z), cval, dtype=vol.dtype)  # output buffer
+        mip = np.full((X, Z), cval, dtype=vol.dtype)  # output buffer
 
-    x_idx = np.arange(X) - cx  # centred column offsets
-    for i, dx in enumerate(x_idx):
-        # Parametric line for this column → arrays of shape (Y,1)
-        xs = cx + cth * dx + sth * y_idx
-        ys = cy - sth * dx + cth * y_idx
+        x_idx = np.arange(X) - cx  # centred column offsets
+        for i, dx in enumerate(x_idx):
+            # Parametric line for this column → arrays of shape (Y,1)
+            xs = cx + cth * dx + sth * y_idx
+            ys = cy - sth * dx + cth * y_idx
 
-        # ---- tile to (Y,Z) so shapes match ---------------------------
-        xs = np.repeat(xs, Z, axis=1)  # (Y,Z)
-        ys = np.repeat(ys, Z, axis=1)  # (Y,Z)
-        zs = np.repeat(z_idx, Y, axis=0)  # (Y,Z)
+            # ---- tile to (Y,Z) so shapes match ---------------------------
+            xs = np.repeat(xs, Z, axis=1)  # (Y,Z)
+            ys = np.repeat(ys, Z, axis=1)  # (Y,Z)
+            zs = np.repeat(z_idx, Y, axis=0)  # (Y,Z)
 
-        coords = np.stack([xs, ys, zs], axis=0)  # (3, Y, Z)
+            coords = np.stack([xs, ys, zs], axis=0)  # (3, Y, Z)
 
-        sampled = map_coordinates(vol, coords, order=order, mode="constant", cval=cval)
-        mip[i, :] = sampled.max(axis=0)  # collapse along Y
+            sampled = map_coordinates(
+                vol, coords, order=order, mode="constant", cval=cval
+            )
+            mip[i, :] = sampled.max(axis=0)  # collapse along Y
 
-    print(f"Initial volume shape: {vol.shape}, end MIP shape: {mip.shape}")
-
-    return mip
+        return mip
 
 
 def main(args):
-
-    N_ANGLES = 4
-    TARGET_RES = 1.5
-    TARGET_MIP_H = 480
-    TARGET_MIP_W = 480
 
     root_dir = Path(args.root_dir)
     output_root = root_dir
     nii_paths = sorted(root_dir.glob("*.nii.gz"))
     nb_mips = 0
-    for file in nii_paths:
+    for file in tqdm(nii_paths, desc="Creating MIPs"):
         center = file.parents[2].name
         tracer = file.parents[1].name
         out_dir = output_root / tracer / "pet"
@@ -133,17 +123,17 @@ def main(args):
 
         example_output_path = out_dir / "4_MIPs" / f"4MIPs_{file.stem}.gz"
         if example_output_path.exists():
-            print("File exists already:", example_output_path)
+            # print("File exists already:", example_output_path)
             continue
 
         img = nib.load(file)
         voxel_mm = img.header.get_zooms()
 
-        arr = img.get_fdata()
-        arr = resample_to_spacing(arr, voxel_mm, target_mm=TARGET_RES)
-        angles = np.linspace(0, 180, N_ANGLES, endpoint=False)
+        arr = img.get_fdata(dtype=np.float32)
+        arr = resample_to_spacing(arr, voxel_mm, target_mm=args.target_res)
+        angles = np.linspace(0, 180, args.n_angles, endpoint=False)
         mips = [oblique_sagittal_mip(arr, a) for a in angles]
-        mips = [crop_pad_2d(m, TARGET_MIP_H, TARGET_MIP_W) for m in mips]
+        mips = [crop_pad_2d(m, args.target_hw, args.target_hw) for m in mips]
         mips = np.asarray(mips, dtype=np.float32)
 
         out_dir = out_dir / "4_MIPs"
@@ -156,6 +146,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root-dir", default="/mnt/c/Users/roxan/OS_data/")
+    parser.add_argument("--root-dir", type=str)
+    parser.add_argument("--n-angles", type=int, default=4)
+    parser.add_argument("--target-res", type=float, default=1.5)
+    parser.add_argument("--target-hw", type=int, default=480)
     args = parser.parse_args()
     main(args)

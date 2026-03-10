@@ -11,7 +11,7 @@ from timm.data.constants import (
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
-from nucli_train.val.evaluators import EVALUATORS_REGISTRY
+from src.val.evaluator_MAE_imagenet import MAEevaluatorIN
 
 
 class ImageFolderAsDict(Dataset):
@@ -73,7 +73,9 @@ def _select_subset_indices(base_dataset, subset_size, seed, per_class, class_ids
         indices = list(range(num_samples))
         if class_ids is not None:
             indices = [
-                i for i, target in enumerate(base_dataset.targets) if target in class_ids
+                i
+                for i, target in enumerate(base_dataset.targets)
+                if target in class_ids
             ]
         if subset_size >= len(indices):
             return indices
@@ -175,7 +177,9 @@ def build_imagenet_data(cfg):
 
     if split_from_train and val_split > 0.0:
         train_root = Path(cfg["data_root"]) / "train"
-        base_train = datasets.ImageFolder(train_root, transform=build_transform(True, cfg))
+        base_train = datasets.ImageFolder(
+            train_root, transform=build_transform(True, cfg)
+        )
         seed = cfg.get("subset_seed", 42)
         indices = _select_subset_indices(
             base_dataset=base_train,
@@ -191,7 +195,9 @@ def build_imagenet_data(cfg):
         train_idx = indices[val_count:]
 
         train_dataset = ImageFolderAsDict(Subset(base_train, train_idx))
-        val_base = datasets.ImageFolder(train_root, transform=build_transform(False, cfg))
+        val_base = datasets.ImageFolder(
+            train_root, transform=build_transform(False, cfg)
+        )
         val_dataset = ImageFolderAsDict(Subset(val_base, val_idx))
     else:
         train_dataset = build_imagenet_dataset(is_train=True, cfg=cfg)
@@ -214,7 +220,7 @@ def build_imagenet_data(cfg):
             drop_last=False,
         )
         evaluators = [
-            EVALUATORS_REGISTRY.get("MAE-evaluator-imagenet")(
+            MAEevaluatorIN(
                 "results/imagenet",
                 imagenet_default_mean_and_std=cfg.get(
                     "imagenet_default_mean_and_std", True

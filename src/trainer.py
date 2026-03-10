@@ -236,11 +236,11 @@ class Trainer:
             self.validate(epoch)
 
             if epoch % self.save_interval == 0:
-                models_to_save = self.model.models_to_save()
-                for name, submodel in models_to_save.items():
+                nets_to_save = self.model.nets_to_save()
+                for name, subnet in nets_to_save.items():
                     if isinstance(submodel, dict):
                         torch.save(
-                            submodel,
+                            subnet,
                             os.path.join(
                                 self.checkpoint_dir,
                                 name + "_epoch_" + str(epoch) + ".pt",
@@ -248,7 +248,7 @@ class Trainer:
                         )
                     else:
                         torch.save(
-                            submodel.state_dict(),
+                            subnet.state_dict(),
                             os.path.join(
                                 self.checkpoint_dir,
                                 name + "_epoch_" + str(epoch) + ".pt",

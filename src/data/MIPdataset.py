@@ -1,15 +1,15 @@
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms
 import nibabel as nib
 from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import yaml
-from nucli_train.val.evaluators import EVALUATORS_REGISTRY
 import numpy as np
 import random
+
+
+from src.val.evaluator_MAE import MAEevaluator
 
 
 def _open_volume(path: Path):
@@ -90,7 +90,9 @@ class MIPDataset(Dataset):
             elif self.slice_axis == 2:
                 arr = arr3d[:, :, mip_idx]
             else:
-                raise ValueError(f"Unsupported slice_axis={self.slice_axis}. Expected 0, 1 or 2.")
+                raise ValueError(
+                    f"Unsupported slice_axis={self.slice_axis}. Expected 0, 1 or 2."
+                )
 
             mip = torch.from_numpy(arr).float().unsqueeze(0)
         else:
@@ -359,7 +361,7 @@ def build_mip_data(cfg):
     )
     print(f"Total nb of MIPs in train: {len(train_dataset.mip_entries)}")
     print(f"Total nb of MIPs in val: {len(val_dataset.mip_entries)}")
-    evaluators = [EVALUATORS_REGISTRY.get("MAE-evaluator")(f"examples/mips")]
+    evaluators = [MAEevaluator(f"examples/mips")]
     val_loaders = {
         "mip_val": {
             "interval": cfg["val"].get("global_eval_interval", 1),

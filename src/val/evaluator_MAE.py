@@ -1,5 +1,3 @@
-from nucli_train.val.evaluators import EVALUATORS_REGISTRY
-
 import mlflow
 
 import numpy as np
@@ -8,7 +6,6 @@ import matplotlib.pyplot as plt
 import torch
 
 
-@EVALUATORS_REGISTRY.register("MAE-evaluator")
 class MAEevaluator:
     def __init__(self, dataset_name):
         self.dataset_name = dataset_name
@@ -40,9 +37,7 @@ class MAEevaluator:
         mask = self.output["mask"]
         masked = self._invert_preprocess(self.output["masked"])
         originals = self._invert_preprocess(self.output["original"])
-        recon = self.output["preds"] * mask + preds * (
-            1 - mask
-        )  
+        recon = self.output["preds"] * mask + preds * (1 - mask)
         patient_id = self.output["patient_id"]
         feats = self.output["feats"]
         num_rows = min(preds.shape[0], len(patient_id), 5)

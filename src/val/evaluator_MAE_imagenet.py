@@ -17,11 +17,9 @@ from timm.data.constants import (
     IMAGENET_INCEPTION_MEAN,
     IMAGENET_INCEPTION_STD,
 )
-from nucli_train.val.evaluators import EVALUATORS_REGISTRY
 
 
-@EVALUATORS_REGISTRY.register("MAE-evaluator-imagenet")
-class MAEevaluator:
+class MAEevaluatorIN:
     def __init__(
         self,
         dataset_name,

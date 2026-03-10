@@ -1,6 +1,4 @@
 import torch
-import argparse
-import monai
 import pandas as pd
 from torch.utils.data import DataLoader
 import sys
@@ -20,7 +18,7 @@ from monai.transforms import (
     ToTensord,
 )
 from monai.data import Dataset
-import src.sparse.sparse_transform as sparse_ops
+from src.nets import sparse_transform as sparse_ops
 
 
 def run_inference(setup_cfg_path, checkpoint_path, test_csv):
@@ -219,7 +217,6 @@ def mae_inference_step(model, batch, mask_ratio=None):
 
 
 from torch.utils.data import Dataset, DataLoader
-from PIL import Image
 import nibabel as nib
 import numpy as np
 import torch

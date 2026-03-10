@@ -1,23 +1,8 @@
-# Ignore everything by default
-*
 
-# Keep directory traversal for allowlisted files
-!*/
 
-# Keep Python scripts
-!*.py
 
-# Keep config YAML files only
-!configs/
-!configs/**/*.yml
-!configs/**/*.yaml
 
-# Keep repo metadata/docs requested
-!README.md
-!.gitignore
 
-# Ignore experiment tracking artifacts
-wandb/
-.wandb/
-mlruns/
-mlartifacts/
+
+
+

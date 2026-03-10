@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 import torch.nn as nn
 
 
@@ -23,7 +20,6 @@ class ConvNeXtV2Block2D(nn.Module):
         drop_path (float): Stochastic depth rate.
     Based on: https://github.com/facebookresearch/ConvNeXt-V2/blob/main/models/convnextv2.py
     Note: we don't perform pemutations here because we implemented GRN differently.
-    Adam.
     """
 
     def __init__(self, dim, drop_path=0.0):

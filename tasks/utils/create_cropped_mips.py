@@ -1,5 +1,3 @@
-import torch
-import torch.nn.functional as F
 import nibabel as nib
 import numpy as np
 import scipy.ndimage as ndi
@@ -120,8 +118,8 @@ def main(args):
 
     N_ANGLES = 4
     TARGET_RES = 1.5
-    TARGET_MIP_H = 480 
-    TARGET_MIP_W = 480  
+    TARGET_MIP_H = 480
+    TARGET_MIP_W = 480
 
     root_dir = Path(args.root_dir)
     output_root = root_dir
@@ -132,7 +130,7 @@ def main(args):
         tracer = file.parents[1].name
         out_dir = output_root / tracer / "pet"
         out_dir.mkdir(parents=True, exist_ok=True)
-        
+
         example_output_path = out_dir / "4_MIPs" / f"4MIPs_{file.stem}.gz"
         if example_output_path.exists():
             print("File exists already:", example_output_path)

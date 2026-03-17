@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument(
         "--model-cfg",
         type=str,
-        default="../../configs/models/IN_pretraining/convnextMAE_T.yaml",
+        default="../../configs/pretrain/IN_pretraining/convnextMAE_T.yaml",
         help="Path to model config YAML",
     )
 
@@ -41,7 +41,7 @@ def parse_args():
         "--epochs",
         type=int,
         default=1600,
-        help="nb of epochs",
+        help="number of epochs",
     )
 
     parser.add_argument("--save-interval", type=int, default=100)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     experiment_name = args.experiment_name
 
     with open(model_cfg, "r") as f:
-        model_cfg_dict = yaml.safe_load(f)
+        model_cfg_dict = yaml.safe_load(f)["model"]
     model = build_model(model_cfg_dict)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Total model params: {total_params:,}")

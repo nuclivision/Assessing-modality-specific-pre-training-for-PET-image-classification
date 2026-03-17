@@ -288,8 +288,6 @@ class MIM(nn.Module):
 
     def train_step(self, batch):
         input_data = self._prepare_input(batch["data"].cuda())
-        if self.intensitylog:
-            print("Using log(1+x) in training!")
         preds, _, patch_mask_long = self._forward_shared(input_data)
         return self.forward_loss(input_data, preds, patch_mask_long)
 

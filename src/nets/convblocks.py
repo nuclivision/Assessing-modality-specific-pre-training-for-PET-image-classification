@@ -14,7 +14,7 @@ from timm.models.layers import DropPath
 
 class ConvNeXtV2Block2D(nn.Module):
     """
-    Sparse ConvNeXtV2 block implementation.
+    ConvNeXtV2 block implementation.
     Args:
         dim (int): Number of input channels
         drop_path (float): Stochastic depth rate.

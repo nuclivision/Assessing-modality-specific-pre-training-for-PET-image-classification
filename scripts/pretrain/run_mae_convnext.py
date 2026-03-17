@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument(
         "--model-cfg",
         type=str,
-        default="../../configs/models/MIP_pretraining/convnextMAE_T.yaml",
+        default="../../configs/pretrain/MIP_pretraining/convnextMAE_T.yaml",
         help="Path to model config YAML",
     )
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     data_cfg = args.data_cfg
 
     with open(model_cfg, "r") as f:
-        model_cfg_dict = yaml.safe_load(f)
+        model_cfg_dict = yaml.safe_load(f)["model"]
 
     model = build_model(model_cfg_dict)
     total_params = sum(p.numel() for p in model.parameters())

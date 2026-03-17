@@ -1,4 +1,21 @@
+.*
 
+!.yaml
+!.py
+!.md
+!.txt
+!.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# MLflow experiments
+scripts/MAE/experiments/
+
+# Wandb runs
+tasks/scripts/wandb/
 
 
 

@@ -14,6 +14,8 @@ This repository implements a controlled study of self-supervised pre-training fo
 
 The core question is whether modality-specific PET pre-training improves performance over size-matched natural-image pre-training (ImageNet) when all other factors are kept fixed.
 
+The MAE encoder uses sparse convolutions (following [SparK](https://github.com/keyu-tian/SparK)) with a custom **reweighted sparse convolution** that corrects for activation suppression at mask boundaries — preventing zero-padded inactive pixels from diluting border convolution outputs. See [docs/sparse_convnext.md](docs/sparse_convnext.md) for details and a visual illustration.
+
 ## Key Findings (Paper Summary)
 
 Under identical pre-training budgets and matched dataset sizes:
@@ -37,29 +39,6 @@ Reported AUROC summary (from manuscript):
 Run `pip install -r requirements.txt`. Use a Python environment with Python 3.10 or newer. Our setup uses Python 3.11, but any version ≥ 3.10 is likely to work.
 
 No separate package installation is required. The provided scripts are designed to run directly from the cloned repository and handle access to the `src/` code at runtime.
-
-
-## Repository Structure
-
-```
-configs/
-  data/                   # Data configs for PET MIPs and ImageNet subsets
-  pretrain/               # Model configs for MAE pre-training
-    MIP_pretraining/
-    IN_pretraining/
-    2phase_pretraining/
-  classification/         # Setup config and transforms for downstream task
-scripts/
-  create_mips/            # Preprocessing: 3D NIfTI → MIP NIfTI
-  pretrain/               # MAE pre-training and inference scripts
-  classification/         # Downstream classification training scripts
-src/
-  data/                   # MIPDataset and ImageNet subset data loading
-  models/                 # MAE and classifier model wrappers
-  nets/                   # ConvNeXt backbone, sparse convolution blocks
-  val/                    # MAE reconstruction evaluators
-  inference/              # Inference utilities
-```
 
 
 ## Data Format Expectations
@@ -275,13 +254,6 @@ python scripts/classification/train_clf.py \
   --cv-fold 1
 ```
 
-### 2.3 Inference on a test set
-
-Use `src/inference/inference.py` (`run_inference`) with:
-- setup config path
-- classifier checkpoint path
-- CSV containing `PatientID`, `Label`, `image`
-
 The output includes per-patient prediction and positive-class probability (`Prob_Pos`).
 
 ---
@@ -302,27 +274,7 @@ The output includes per-patient prediction and positive-class probability (`Prob
 
 ## Architecture Notes
 
-### Sparse ConvNeXt encoder
-
-The MAE encoder is a ConvNeXtV2-tiny modified to use **sparse convolutions** during pre-training. This follows the [SparK](https://github.com/keyu-tian/SparK) approach: masked patches are zeroed out and the active (unmasked) region is tracked via a binary mask. Convolutions are applied only over active locations, so masked regions do not contribute to feature statistics.
-
-### Reweighted sparse convolution (custom modification)
-
-Standard sparse convolution computes a weighted sum over a convolution window, but when the window overlaps the mask boundary, some kernel positions land on zeroed-out (inactive) pixels. This dilutes the output compared to a convolution that only sees active pixels — the effective normalization of the kernel is smaller near boundaries.
-
-We introduce `SparseConv2dReweighted` (`src/nets/sparse_transform.py`) to correct for this. This is **not part of the original SparK implementation** and was added to prevent masked (zero-padded) regions from biasing the convolution output at active-region borders. The correction works as follows:
-
-1. **Apply the convolution** on the masked input (inactive pixels are zero).
-2. **Compute how much of each kernel was actually active** for every output position, by convolving the binary input mask with the absolute kernel weights. This gives the effective kernel mass `mask_sum` at each position.
-3. **Rescale the output** so that the contribution is normalized relative to the full kernel mass `full_sum`:
-
-   ```
-   output_normalized = output_no_bias / (mask_sum + ε) × full_sum
-   ```
-
-4. **Zero out inactive output positions** using the output mask, so sparse regions remain inactive in the next layer.
-
-The effect is that a border convolution window with only half its support over active pixels will have its output scaled up to match what a fully-active window would have produced — preventing the artificial suppression of activations at the active-region boundary caused by zero-padded masked pixels.
+See [docs/sparse_convnext.md](docs/sparse_convnext.md) for a full description of the sparse ConvNeXt encoder and the reweighted sparse convolution modification.
 
 ---
 

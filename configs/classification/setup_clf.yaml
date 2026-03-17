@@ -1,5 +1,5 @@
 data:
-  path_to_dataset: 
+  path_to_dataset: "/mnt/c/Users/roxan/OneDrive - Nuclivision/nucli-ssl/mip-data/triage/"
   nb_MIPs: 4
   scans_excluded: null
   centers_excluded: null
@@ -15,7 +15,7 @@ split:
 
 dataloader:
   batch_size: 32
-  num_workers: 1
+  num_workers: 4
   pin_memory: true
   weighted_sampler:
     enabled: false
@@ -65,8 +65,7 @@ model:
         args:
             lr: 0.0001
   model_args:
-    pretrain_source: "mae"   # "mae" (local checkpoint) or "timm" (official ConvNeXtV2 weights)
-    timm_backbone: "convnextv2_tiny.fcmae_ft_in1k"
-    backbone: ""     
+    pretrain_source: "timm"   # "mae" (local checkpoint) or "timm" (official ConvNeXtV2 weights)
+    backbone: "convnextv2_tiny.fcmae_ft_in1k"
     linearprobe: true
     block_training_budget: 1

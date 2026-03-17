@@ -12,10 +12,11 @@ __pycache__/
 *.pyo
 
 # MLflow experiments
-scripts/MAE/experiments/
+scripts/pretrain/experiments/
 
 # Wandb runs
 tasks/scripts/wandb/
+scripts/classification/wandb
 
 
 

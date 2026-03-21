@@ -300,4 +300,4 @@ If you use this repository, please cite:
 
 ## License
 
-This repository is released under the license in [LICENSE](LICENSE).
+This repository is released under [Apache License 2.0](LICENSE).

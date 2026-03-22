@@ -90,6 +90,8 @@ PET volumes must first be projected into 2D Maximum Intensity Projections (MIPs)
 
 The script expects input files at `<root_dir>/<tracer>/<scan>.nii.gz` and writes output to `<root_dir>/<tracer>/pet/<n>_MIPs/`.
 
+> **Orientation requirement:** The last array axis of the input NIfTI must be the axial (superior–inferior) axis. Any orientation satisfying this works (e.g., RAS, LAS, RPS); ensure such an orientation before running the script below.
+
 ```bash
 python scripts/create_mips/create_cropped_mips.py \
   --root-dir /path/to/raw_pet_data \

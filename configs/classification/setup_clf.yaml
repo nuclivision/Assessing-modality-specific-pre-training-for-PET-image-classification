@@ -4,9 +4,9 @@ data:
   scans_excluded: null
   centers_excluded: null
 
-transforms_config: ../configs/classification/MIP-transforms.yaml
+transforms_config: configs/classification/MIP-transforms.yaml
 
-cache_dir: "./cache_resnet_original"
+cache_dir: "./cache_classification"
 
 split:
   val_ratio: 0.1

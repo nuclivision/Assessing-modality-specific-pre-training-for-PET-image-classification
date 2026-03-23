@@ -16,7 +16,7 @@ model:
         drop_path_rate: 0.0
         head_init_scale: 1.0
         in_chans: 3
-        decoder_embed_dim: 512
+        decoder_embed_dim: 384
         decoder_depth: 1
         lr: 3e-4
         learnable_mask_token: false
@@ -26,4 +26,4 @@ model:
       optimizers:
         name: adam
         args:
-          lr: 0.00005
+          lr: 0.0001

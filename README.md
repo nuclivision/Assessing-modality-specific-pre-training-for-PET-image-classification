@@ -262,6 +262,30 @@ python scripts/classification/train_clf.py \
 
 The output includes per-patient prediction and positive-class probability (`Prob_Pos`).
 
+### 2.3 Leave-one-center-out classification
+
+If you follow the data folder structure described in the [PET data section](#pet-data-for-mae-pre-training-and-downstream-classification) and your dataset spans multiple centers, you can perform leave-one-center-out (LOO) evaluation.
+
+In `configs/classification/setup_clf.yaml`, set `centers_excluded` to a list of center names to exclude from training and validation:
+
+```yaml
+data:
+  path_to_dataset: "/path/to/downstream_pet_root"
+  centers_excluded:
+    - "center_A"
+    - "center_B"
+```
+
+The dataloader will ignore all scans from the listed centers during training. You can then run inference on the held-out center(s) using:
+
+```bash
+python scripts/classification/run_clf.py \
+  --setup-config configs/classification/setup_clf.yaml \
+  --ckpt-path /path/to/classifier_checkpoint.pth
+```
+
+This allows you to assess how well a model trained on a subset of centers generalizes to an unseen center.
+
 ---
 
 ## Reproducing the Controlled Comparison
